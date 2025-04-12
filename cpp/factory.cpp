@@ -33,3 +33,33 @@ public:
         return nullptr;
     }
 };
+
+int main() {
+    AnimalFactory factory;
+
+    // Create a Dog and call its speak method
+    auto dog = factory.createAnimal("dog");
+    if (dog) {
+        std::cout << "Dog says: " << dog->speak() << std::endl;
+    } else {
+        std::cout << "Failed to create a Dog." << std::endl;
+    }
+
+    // Create a Cat and call its speak method
+    auto cat = factory.createAnimal("cat");
+    if (cat) {
+        std::cout << "Cat says: " << cat->speak() << std::endl;
+    } else {
+        std::cout << "Failed to create a Cat." << std::endl;
+    }
+
+    // Try to create an unknown animal
+    auto unknown = factory.createAnimal("bird");
+    if (unknown) {
+        std::cout << "Unknown animal says: " << unknown->speak() << std::endl;
+    } else {
+        std::cout << "Failed to create an unknown animal." << std::endl;
+    }
+
+    return 0;
+}

@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write  # 🔥 릴리스 생성과 파일 업로드를 위해 필요
+  contents: write  
 
 jobs:
   build-and-release:
@@ -24,28 +24,28 @@ jobs:
 
     - name: Build C# projects
       run: |
-        for csproj in $(find assign6_2 -name "*.cs"); do
+        for csproj in $(find . -name "*.cs"); do
           dotnet build "$csproj" --configuration Release -o output/csharp
         done
 
     - name: Compile Kotlin projects
       run: |
         mkdir -p output/kotlin
-        for ktfile in $(find assign6_2 -name "*.kt"); do
+        for ktfile in $(find . -name "*.kt"); do
           kotlinc "$ktfile" -include-runtime -d "output/kotlin/$(basename ${ktfile%.kt}.jar)"
         done
 
     - name: Compile C++ projects
       run: |
         mkdir -p output/cpp
-        for cppfile in $(find assign6_2 -name "*.cpp"); do
+        for cppfile in $(find . -name "*.cpp"); do
           g++ "$cppfile" -o "output/cpp/$(basename ${cppfile%.cpp})"
         done
 
     - name: Compile Python scripts
       run: |
         mkdir -p output/python
-        for pyfile in $(find assign6_2 -name "*.py"); do
+        for pyfile in $(find . -name "*.py"); do
           python3 -m py_compile "$pyfile"
           cp "${pyfile}c" "output/python/$(basename ${pyfile}c)"
         done

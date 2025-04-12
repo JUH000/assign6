@@ -25,8 +25,10 @@ jobs:
     - name: Build C# projects
       run: |
         mkdir -p output/csharp
+        SDK_VERSION=$(dotnet --version)
+        CSC_DLL_PATH=$(dirname $(which dotnet))/../sdk/$SDK_VERSION/Roslyn/bincore/csc.dll
         for csfile in $(find . -name "*.cs"); do
-          csc -out:output/csharp/$(basename ${csfile%.cs}.exe) "$csfile"
+          dotnet exec "$CSC_DLL_PATH" -out:output/csharp/$(basename ${csfile%.cs}.exe) "$csfile"
         done
 
     - name: Compile Kotlin projects

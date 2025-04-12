@@ -1,0 +1,93 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Projects
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # 2. Set up build environment
+    - name: Set up build environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential zip openjdk-11-jdk
+        sudo apt-get install -y dotnet-sdk-6.0
+
+    # 3. Compile C++ projects
+    - name: Compile C++ projects
+      run: |
+        mkdir -p build/cpp
+        for file in $(find . -name "*.cpp"); do
+          output="build/cpp/$(basename $file .cpp)"
+          g++ $file -o $output
+        done
+
+    # 4. Compile C# projects
+    - name: Compile C# projects
+      run: |
+        mkdir -p build/csharp
+        for project in $(find . -name "*.csproj"); do
+          dotnet build $project -o build/csharp
+        done
+
+    # 5. Compile Kotlin projects
+    - name: Compile Kotlin projects
+      run: |
+        mkdir -p build/kotlin
+        for file in $(find . -name "*.kt"); do
+          output="build/kotlin/$(basename $file .kt).jar"
+          kotlinc $file -include-runtime -d $output
+        done
+
+    # 6. Archive compiled programs
+    - name: Archive compiled programs
+      run: |
+        zip -r build/compiled_programs.zip build/*
+
+    # 7. Upload the artifact for release
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: compiled_programs
+        path: build/compiled_programs.zip
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # 2. Download the artifact
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: compiled_programs
+
+    # 3. Create a GitHub Release
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.run_number }}
+        release_name: "Compiled Programs Release #${{ github.run_number }}"
+        body: "This release contains the compiled programs from the assign6_2 directory."
+        draft: false
+        prerelease: false
+        files: build/compiled_programs.zip

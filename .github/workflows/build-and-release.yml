@@ -44,17 +44,21 @@ jobs:
           g++ "$cppfile" -o "${cppfile%.cpp}"
         done
 
-    # Package Python scripts
-    - name: Package Python scripts
+    # Compile Python scripts
+    - name: Compile Python scripts
       run: |
-        mkdir -p assign6_2/python
-        cp assign6_2/*.py assign6_2/python/
+        mkdir -p output/python
+        for pyfile in $(find assign6_2 -name "*.py"); do
+          py_compile_dir="output/python"
+          python3 -m py_compile "$pyfile"
+          cp "${pyfile}c" "$py_compile_dir/"
+        done
 
     # Create a zip file of all compiled outputs
     - name: Create release archive
       run: |
         mkdir -p output
-        find assign6_2 -type f \( -name "*.dll" -o -name "*.exe" -o -name "*.jar" -o -name "*.out" -o -name "*.py" \) -exec cp {} output/ \;
+        find assign6_2 -type f \( -name "*.dll" -o -name "*.exe" -o -name "*.jar" -o -name "*.out" -o -name "*.pyc" \) -exec cp {} output/ \;
         zip -r release.zip output
 
     # Create a GitHub release and upload the zip file

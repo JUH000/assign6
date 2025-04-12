@@ -24,8 +24,9 @@ jobs:
 
     - name: Build C# projects
       run: |
-        for csproj in $(find . -name "*.cs"); do
-          dotnet build "$csproj" --configuration Release -o output/csharp
+        mkdir -p output/csharp
+        for csfile in $(find . -name "*.cs"); do
+          csc -out:output/csharp/$(basename ${csfile%.cs}.exe) "$csfile"
         done
 
     - name: Compile Kotlin projects

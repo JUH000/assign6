@@ -2,35 +2,32 @@ name: Build and Release
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: write  # 🔥 릴리스 생성과 파일 업로드를 위해 필요
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
 
     steps:
-    # Checkout the repository
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Set up .NET for C# projects
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '8.0.x'
 
-    # Build C# projects
     - name: Build C# projects
       run: |
         for csproj in $(find assign6_2 -name "*.cs"); do
           dotnet build "$csproj" --configuration Release -o output/csharp
         done
 
-    # Compile Kotlin projects
     - name: Compile Kotlin projects
       run: |
         mkdir -p output/kotlin
@@ -38,7 +35,6 @@ jobs:
           kotlinc "$ktfile" -include-runtime -d "output/kotlin/$(basename ${ktfile%.kt}.jar)"
         done
 
-    # Compile C++ projects
     - name: Compile C++ projects
       run: |
         mkdir -p output/cpp
@@ -46,7 +42,6 @@ jobs:
           g++ "$cppfile" -o "output/cpp/$(basename ${cppfile%.cpp})"
         done
 
-    # Compile Python scripts
     - name: Compile Python scripts
       run: |
         mkdir -p output/python
@@ -55,13 +50,12 @@ jobs:
           cp "${pyfile}c" "output/python/$(basename ${pyfile}c)"
         done
 
-    # Create a zip file of all compiled outputs
     - name: Create release archive
       run: |
         zip -r release.zip output
 
-    # Create a GitHub release and upload the zip file
     - name: Create GitHub Release
+      id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -72,4 +66,13 @@ jobs:
           This release contains the compiled outputs of all projects in assign6_2.
         draft: false
         prerelease: false
-        files: release.zip
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./release.zip
+        asset_name: release.zip
+        asset_content_type: application/zip

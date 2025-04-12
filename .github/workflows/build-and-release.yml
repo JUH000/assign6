@@ -32,11 +32,9 @@ jobs:
     - name: Compile C# files
       run: |
         mkdir -p build/csharp
-        for file in csharp/*.cs; do
-          filename=$(basename "$file" .cs)
-          mcs "$file" -out:"build/csharp/${filename}.exe"
+        for proj in csharp/*/*.csproj; do
+          dotnet publish "$proj" -o "build/csharp/$(basename $(dirname $proj))"
         done
-
     # === Kotlin 컴파일 ===
     - name: Setup Kotlin
       run: |

@@ -26,22 +26,24 @@ jobs:
     # Build C# projects
     - name: Build C# projects
       run: |
-        for csproj in $(find assign6_2 -name "*.csproj"); do
-          dotnet build "$csproj" --configuration Release
+        for csproj in $(find assign6_2 -name "*.cs"); do
+          dotnet build "$csproj" --configuration Release -o output/csharp
         done
 
     # Compile Kotlin projects
     - name: Compile Kotlin projects
       run: |
+        mkdir -p output/kotlin
         for ktfile in $(find assign6_2 -name "*.kt"); do
-          kotlinc "$ktfile" -include-runtime -d "${ktfile%.kt}.jar"
+          kotlinc "$ktfile" -include-runtime -d "output/kotlin/$(basename ${ktfile%.kt}.jar)"
         done
 
     # Compile C++ projects
     - name: Compile C++ projects
       run: |
+        mkdir -p output/cpp
         for cppfile in $(find assign6_2 -name "*.cpp"); do
-          g++ "$cppfile" -o "${cppfile%.cpp}"
+          g++ "$cppfile" -o "output/cpp/$(basename ${cppfile%.cpp})"
         done
 
     # Compile Python scripts
@@ -49,16 +51,13 @@ jobs:
       run: |
         mkdir -p output/python
         for pyfile in $(find assign6_2 -name "*.py"); do
-          py_compile_dir="output/python"
           python3 -m py_compile "$pyfile"
-          cp "${pyfile}c" "$py_compile_dir/"
+          cp "${pyfile}c" "output/python/$(basename ${pyfile}c)"
         done
 
     # Create a zip file of all compiled outputs
     - name: Create release archive
       run: |
-        mkdir -p output
-        find assign6_2 -type f \( -name "*.dll" -o -name "*.exe" -o -name "*.jar" -o -name "*.out" -o -name "*.pyc" \) -exec cp {} output/ \;
         zip -r release.zip output
 
     # Create a GitHub release and upload the zip file

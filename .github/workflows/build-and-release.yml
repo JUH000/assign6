@@ -2,82 +2,68 @@ name: Build and Release
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
-
-permissions:
-  contents: write  
+    branches: [ main ]
 
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v3
 
+    # === C++ 컴파일 ===
+    - name: Compile C++ files
+      run: |
+        mkdir -p build/cpp
+        for file in cpp/*.cpp; do
+          filename=$(basename "$file" .cpp)
+          g++ "$file" -o "build/cpp/${filename}"
+        done
+
+    # === C# 컴파일 ===
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '8.0.x'
 
-    - name: Build C# projects
+    - name: Compile C# files
       run: |
-        mkdir -p output/csharp
-        for csfile in $(find . -name "*.cs"); do
-          filename=$(basename ${csfile%.cs})
-          dotnet new console -o tmp_$filename --force
-          mv "$csfile" tmp_$filename/Program.cs
-          dotnet build tmp_$filename -c Release -o ../output/csharp
-          rm -rf tmp_$filename
+        mkdir -p build/csharp
+        for file in csharp/*.cs; do
+          filename=$(basename "$file" .cs)
+          mcs "$file" -out:"build/csharp/${filename}.exe"
         done
 
-    - name: Compile Kotlin projects
+    # === Kotlin 컴파일 ===
+    - name: Setup Kotlin
       run: |
-        mkdir -p output/kotlin
-        for ktfile in $(find . -name "*.kt"); do
-          kotlinc "$ktfile" -include-runtime -d "output/kotlin/$(basename ${ktfile%.kt}.jar)"
+        sudo apt-get update
+        sudo apt-get install -y default-jdk unzip
+        curl -s https://get.sdkman.io | bash
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+        sdk install kotlin
+
+    - name: Compile Kotlin files
+      run: |
+        mkdir -p build/kotlin
+        for file in kotlin/*.kt; do
+          filename=$(basename "$file" .kt)
+          kotlinc "$file" -include-runtime -d "build/kotlin/${filename}.jar"
         done
 
-    - name: Compile C++ projects
+    # === 압축 및 릴리즈 ===
+    - name: Zip build outputs
       run: |
-        mkdir -p output/cpp
-        for cppfile in $(find . -name "*.cpp"); do
-          g++ "$cppfile" -o "output/cpp/$(basename ${cppfile%.cpp})"
-        done
-
-    - name: Compile Python scripts
-      run: |
-        mkdir -p output/python
-        for pyfile in $(find . -name "*.py"); do
-          python3 -m py_compile "$pyfile"
-          cp "${pyfile}c" "output/python/$(basename ${pyfile}c)"
-        done
-
-    - name: Create release archive
-      run: |
-        zip -r release.zip output
+        zip -r build-artifacts.zip build
 
     - name: Create GitHub Release
-      id: create_release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v1
+      with:
+        name: "Auto Release - ${{ github.sha }}"
+        tag_name: "release-${{ github.sha }}"
+        files: build-artifacts.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v1.0.${{ github.run_number }}
-        release_name: Release v1.0.${{ github.run_number }}
-        body: |
-          This release contains the compiled outputs of all projects in assign6_2.
-        draft: false
-        prerelease: false
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./release.zip
-        asset_name: release.zip
-        asset_content_type: application/zip

@@ -9,85 +9,64 @@ on:
       - main
 
 jobs:
-  build:
-    name: Build Projects
+  build-and-release:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout the repository
+    # Checkout the repository
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 2. Set up build environment
-    - name: Set up build environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential zip openjdk-11-jdk
-        sudo apt-get install -y dotnet-sdk-6.0
+    # Set up .NET for C# projects
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
 
-    # 3. Compile C++ projects
-    - name: Compile C++ projects
+    # Build C# projects
+    - name: Build C# projects
       run: |
-        mkdir -p build/cpp
-        for file in $(find . -name "*.cpp"); do
-          output="build/cpp/$(basename $file .cpp)"
-          g++ $file -o $output
+        for csproj in $(find assign6_2 -name "*.csproj"); do
+          dotnet build "$csproj" --configuration Release
         done
 
-    # 4. Compile C# projects
-    - name: Compile C# projects
-      run: |
-        mkdir -p build/csharp
-        for project in $(find . -name "*.csproj"); do
-          dotnet build $project -o build/csharp
-        done
-
-    # 5. Compile Kotlin projects
+    # Compile Kotlin projects
     - name: Compile Kotlin projects
       run: |
-        mkdir -p build/kotlin
-        for file in $(find . -name "*.kt"); do
-          output="build/kotlin/$(basename $file .kt).jar"
-          kotlinc $file -include-runtime -d $output
+        for ktfile in $(find assign6_2 -name "*.kt"); do
+          kotlinc "$ktfile" -include-runtime -d "${ktfile%.kt}.jar"
         done
 
-    # 6. Archive compiled programs
-    - name: Archive compiled programs
+    # Compile C++ projects
+    - name: Compile C++ projects
       run: |
-        zip -r build/compiled_programs.zip build/*
+        for cppfile in $(find assign6_2 -name "*.cpp"); do
+          g++ "$cppfile" -o "${cppfile%.cpp}"
+        done
 
-    # 7. Upload the artifact for release
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: compiled_programs
-        path: build/compiled_programs.zip
+    # Package Python scripts
+    - name: Package Python scripts
+      run: |
+        mkdir -p assign6_2/python
+        cp assign6_2/*.py assign6_2/python/
 
-  release:
-    name: Create Release
-    needs: build
-    runs-on: ubuntu-latest
+    # Create a zip file of all compiled outputs
+    - name: Create release archive
+      run: |
+        mkdir -p output
+        find assign6_2 -type f \( -name "*.dll" -o -name "*.exe" -o -name "*.jar" -o -name "*.out" -o -name "*.py" \) -exec cp {} output/ \;
+        zip -r release.zip output
 
-    steps:
-    # 1. Checkout the repository
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    # 2. Download the artifact
-    - name: Download artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: compiled_programs
-
-    # 3. Create a GitHub Release
+    # Create a GitHub release and upload the zip file
     - name: Create GitHub Release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.run_number }}
-        release_name: "Compiled Programs Release #${{ github.run_number }}"
-        body: "This release contains the compiled programs from the assign6_2 directory."
+        tag_name: v1.0.${{ github.run_number }}
+        release_name: Release v1.0.${{ github.run_number }}
+        body: |
+          This release contains the compiled outputs of all projects in assign6_2.
         draft: false
         prerelease: false
-        files: build/compiled_programs.zip
+        files: release.zip

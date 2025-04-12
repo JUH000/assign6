@@ -53,7 +53,7 @@ jobs:
         done
 
     # === 압축 및 릴리즈 ===
-    - name: Zip build outputs
+    - name: Zip build output
       run: |
         zip -r build-artifacts.zip build
 
